@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "constrained_nn_eq_discovery"
+version = "0.1.0"
+readme = "README.md"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+  "-ra -q",
+  "--color=yes"
+]
+testpaths = "tests"

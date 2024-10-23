@@ -1,0 +1,11 @@
+name: constrained-nn-eq-discovery
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.11.7
+  - ipython
+  - jupyter
+  - matplotlib
+  - numpy
+  - torch
