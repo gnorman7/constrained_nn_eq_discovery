@@ -68,3 +68,26 @@ def custom_ic(x):
     v0 = torch.zeros_like(x)
     return torch.stack([u0, v0], dim=1)
 
+
+def porous_analytic_ic(X, Y):
+    """Compute initial condition based on the analytical weak solution."""
+
+    # Diffusivity tensor and its inverse
+    D = torch.tensor([[0.3, -0.4], [-0.4, 1]], dtype=torch.float32)
+    Di = torch.inverse(D) # not the best, but likely insignificant compared to other errors
+
+    # Constant C, calculated using determinant of D
+    C = (1 / 5 * torch.pi * 8 * torch.sqrt(torch.det(D)))**(-0.5)
+
+    # Time at which we want the solution
+    t_f = torch.tensor(0.5, dtype=torch.float32)
+
+    # x^T D^-1 x term
+    num_term = (X * (Di[0, 0] * X + Di[0, 1] * Y) + Y * (Di[1, 0] * X + Di[1, 1] * Y))
+
+    # Argument for max: C - (x^T D^-1 x) / (16 sqrt(t))
+    max_arg = C - (num_term / (16 * torch.sqrt(t_f)))
+    # max_arg = C - (num_term / (16 * t_f))
+
+    # Return the weak solution: 1 / sqrt(t) * max(...)
+    return (1 / torch.sqrt(t_f)) * torch.max(max_arg, torch.zeros_like(max_arg))

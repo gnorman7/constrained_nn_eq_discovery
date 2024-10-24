@@ -3,7 +3,7 @@ import torch
 # Given the filename, load the specified model.
 # These are hardcoded, based on the MATLAB results.
 # The WSINDy results are in the from u_tt = (f(u))_{...}
-# We write out just the right hand side, expanding f(u) if needed.
+# We write out just the right hand side, applying chain rule with f(u) and derivatives if needed.
 def get_wsindy_model(filename, m = 3):
     # get just the file, without path (remove .mat extension)
     filename = filename.split("/")[-1].split(".mat")[0]
@@ -28,7 +28,7 @@ def get_wsindy_model(filename, m = 3):
         # [m_x m_t] = 3 3
         # [s_x s_t] = 1 1
         # [p_x p_t] = 15 13
-        if filename == filenames[0]:
+        if filename == filenames[0]: # not from m = 3, from the auto-generated m_x and m_t on full dataset.
             # -0.9887268501174269u^{1}_{}
             # + 0.9985737786157007u^{1}_{xx}
             # + 0.1520814930607303u^{3}_{}
@@ -59,6 +59,12 @@ def get_wsindy_model(filename, m = 3):
                 u = big_u[:, 0:1]
                 u_xx = big_u[:, 2:3]
                 out = -0.9596113071178547 * u + 1.44581134619929 * u_xx + 0.1228362744846409 * u**3
+                return out
+        elif filename == filenames[4]:
+            def N(big_u):
+                # 1.760794789152943u^{1}_{xx}
+                u_xx = big_u[:, 2:3]
+                out = 1.760794789152943 * u_xx
                 return out
         else:
             N = None
