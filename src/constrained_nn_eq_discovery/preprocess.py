@@ -49,12 +49,13 @@ def get_noisy_U(sol: PDE_Soln_2D, noise_level: float) -> torch.Tensor:
 
 
 def get_training_data(sol: PDE_Soln_2D,
-                      noise_level: float, N_ux: int, N_ut: int, N_f: int)\
-        -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+                      noise_level: float, N_ux: int, N_ut: int, N_f: int,
+                      for_validation: bool = False) -> Union[
+                          tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+                          tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]:
     """Given a PDE_Soln or PDE_Soln_2D object, returns training data for the DHPM.
-    xt tensors are [N, 2] or [N, 3] , depending on whether sol is PDE_Soln or PDE_Soln_2D.
+    xt tensors are [N, 3]. The u tensor is [N, 1]. Collocation points are random, training data is equispaced.
     """
-    pass
     U_noisy = get_noisy_U(sol, noise_level)
 
     # sol.X and sol.T are 3D tensors
@@ -70,9 +71,10 @@ def get_training_data(sol: PDE_Soln_2D,
     xt_f = xt[:N_f]
     xt_f.requires_grad = True
 
-    x_inds = torch.randint(0, sol.x.shape[0], (N_ux,))
-    y_inds = torch.randint(0, sol.y.shape[0], (N_ux,))
-    t_inds = torch.randint(0, sol.t.shape[0], (N_ut,))
+    # equispaced indices, these include the boundaries!
+    t_inds = torch.linspace(0, sol.T.shape[0] - 1, N_ut, dtype=torch.int)
+    x_inds = torch.linspace(0, len(sol.x) - 1, N_ux, dtype=torch.int)
+    y_inds = torch.linspace(0, len(sol.y) - 1, N_ux, dtype=torch.int)
 
     # U_train will be N_ux*N_ux*N_ut points from U_noisy
     T_inds, X_inds, Y_inds = torch.meshgrid(t_inds, x_inds, y_inds)
@@ -80,6 +82,9 @@ def get_training_data(sol: PDE_Soln_2D,
     X_train = sol.X[T_inds, X_inds, Y_inds]
     Y_train = sol.Y[T_inds, X_inds, Y_inds]
     T_train = sol.T[T_inds, X_inds, Y_inds]
+
+    if for_validation:
+        return X_train, Y_train, T_train, U_train
 
     # not randomized
     u_train = U_train.flatten().unsqueeze(1)

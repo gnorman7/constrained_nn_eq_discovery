@@ -150,15 +150,22 @@ def train_dhpm_constrained(model: dhpm.EqDiscoveryModel, xt_train: torch.Tensor,
     default_config = {
         'epochs': 100,
         'eps': 1e-3,
-        'verbosity': 1
+        'verbosity': 1,
+        'minimizer_args': {}
     }
 
     config = {**default_config, **training_config}
-
-    epochs = config['epochs']
+    # add 'maxiter':epochs to minimizer_args, if not already present
+    if 'maxiter' not in config['minimizer_args']:
+        config['minimizer_args']['maxiter'] = config['epochs']
+        epochs = config['epochs']
+    else:
+        epochs = config['minimizer_args']['maxiter']
     verbosity = config['verbosity']
     N_f = xt_f.shape[0]
     eps = config['eps']
+
+    print(f'{config["minimizer_args"]}')
 
     def con_fn():
         return model.get_residual(xt_f)

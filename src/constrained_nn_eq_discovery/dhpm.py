@@ -95,12 +95,42 @@ def get_big_u_and_utt(model: Callable[[torch.Tensor], torch.Tensor], xt_f: torch
     return big_u, u_tt
 
 
+def get_big_u_and_ut_2d(model: Callable[[torch.Tensor], torch.Tensor],
+                        xyt_f: torch.Tensor) -> tuple[
+                            torch.Tensor, torch.Tensor]:
+    assert xyt_f.requires_grad
+
+    u = model(xyt_f)
+    u_xyt = torch.autograd.grad(
+        u, xyt_f, torch.ones_like(u), create_graph=True
+    )[0]
+    u_x = u_xyt[:, 0:1]
+    u_y = u_xyt[:, 1:2]
+    u_t = u_xyt[:, 2:3]
+    u_x_xyt = torch.autograd.grad(
+        u_x, xyt_f, torch.ones_like(u_x), create_graph=True
+    )[0]
+    u_xx = u_x_xyt[:, 0:1]
+    u_xy = u_x_xyt[:, 1:2]
+    # u_xt = u_x_xyt[:, 2:3] #unused
+    u_y_xyt = torch.autograd.grad(
+        u_y, xyt_f, torch.ones_like(u_y), create_graph=True
+    )[0]
+    u_yy = u_y_xyt[:, 1:2]
+
+    big_u = torch.cat([u, u_x, u_xx, u_y, u_yy, u_xy], dim=1)
+    return big_u, u_t
+
+
 class EqDiscoveryModel(nn.Module):
-    def __init__(self, u_dnn: nn.Module, N_dnn: nn.Module):
+    def __init__(self, u_dnn: nn.Module, N_dnn: nn.Module, is_2d: bool = False):
         super(EqDiscoveryModel, self).__init__()
         self.u_dnn = u_dnn
         self.N_dnn = N_dnn
-        self.big_u_and_ut_fun = get_big_u_and_utt
+        if is_2d:
+            self.big_u_and_ut_fun = get_big_u_and_ut_2d
+        else:
+            self.big_u_and_ut_fun = get_big_u_and_utt
 
     def get_residual(self, xt_f: torch.Tensor):
         """Returns [N_f, 1] tensor of residuals at collocation points"""

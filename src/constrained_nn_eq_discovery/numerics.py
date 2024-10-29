@@ -24,23 +24,6 @@ def midpoint(f, y0, t):
         y[i + 1] = y[i] + dt * k2
     return y
 
-def higher_order_rk(f, y0, t):
-    # use 8th order Runge-Kutta
-    y = torch.zeros(len(t), *y0.shape, device=y0.device)
-    y[0] = y0
-    for i in range(len(t) - 1):
-        dt = t[i + 1] - t[i]
-        k1 = f(t[i], y[i])
-        k2 = f(t[i] + dt / 2, y[i] + dt / 2 * k1)
-        k3 = f(t[i] + dt / 2, y[i] + dt / 2 * k2)
-        k4 = f(t[i] + dt, y[i] + dt * k3)
-        k5 = f(t[i] + dt / 2, y[i] + dt / 2 * k4)
-        k6 = f(t[i] + dt / 2, y[i] + dt / 2 * k5)
-        k7 = f(t[i] + dt, y[i] + dt * k6)
-        k8 = f(t[i] + dt, y[i] + dt * k7)
-        y[i + 1] = y[i] + dt / 12 * (k1 + 3 * k3 + 4 * k5 + k8)
-    return y
-
 def leapfrog(f, y0, t):
     """y0 is (n, 2), f: (n, 2) -> (n, 2)"""
     y = torch.zeros(len(t), *y0.shape, device=y0.device)
@@ -238,7 +221,7 @@ def solve_pde_2d(U0: torch.Tensor, x_vec: torch.Tensor, y_vec: torch.Tensor,
                 t_vec: torch.Tensor, N: Callable[[torch.Tensor], torch.Tensor],
                 integration_scheme: Callable[
                     [Callable, torch.Tensor, torch.Tensor], torch.Tensor
-                ] = rk4):
+                ] = midpoint):
     """Solve a single PDE in 2D, on rectangular domain with zero dirichlet BCs
     N = N(u, u_x, u_xx, u_y, u_yy, u_xy) -> u_t.
 
