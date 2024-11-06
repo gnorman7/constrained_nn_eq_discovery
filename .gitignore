@@ -165,7 +165,7 @@ cython_debug/
 # CUSTOM, MY OWN FOR THIS PROJECT
 notebooks/old/
 .vscode/
-
+notebooks/navier_stokes.ipynb
 
 
 

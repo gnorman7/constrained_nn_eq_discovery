@@ -97,10 +97,12 @@ def porous_analytic_ic(X, Y, T=None):
     return (1 / torch.sqrt(T_f)) * torch.max(max_arg, torch.zeros_like(max_arg))
 
 
-def visualize_2d_sol(sol, U_pred, n_times_to_plot=5, just_pred=False):
-    cmap = 'inferno'
+def visualize_2d_sol(sol, U_pred, n_times_to_plot=5, just_pred=False, cmap='inferno'):
     # set white color
-    cf_kws = {'colors': '#FFFFFF50', 'levels': 7}
+    if cmap == 'inferno' or cmap == 'plasma' or cmap == 'magma':
+        cf_kws = {'colors': '#FFFFFF50', 'levels': 7}
+    else:
+        cf_kws = {'colors': '#00000050', 'levels': 7}
     # cf_kws = {'colors' : '#00000050', 'levels' : 8}
     vs = {'vmax': float(sol.U.max()), 'vmin': float(sol.U.min())}
     contour_levels = np.linspace(vs['vmin'], vs['vmax'], cf_kws['levels'])

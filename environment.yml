@@ -4,8 +4,12 @@ channels:
   - conda-forge
 dependencies:
   - python=3.11.7
-  - ipython
-  - jupyter
-  - matplotlib
-  - numpy
-  - torch
+  - torch=2.1.2
+  - scipy=1.12.0
+  - numpy=1.26.4
+  - matplotlib=3.8.2
+  - ipython=8.20.0
+  - jupyter=4.2.4
+
+# pip: pysindy
+
