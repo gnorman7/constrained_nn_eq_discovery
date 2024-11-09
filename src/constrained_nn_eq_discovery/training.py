@@ -155,13 +155,16 @@ def train_dhpm_constrained(model: dhpm.EqDiscoveryModel, xt_train: torch.Tensor,
     }
 
     config = {**default_config, **training_config}
+
+    # handle default minimizer_args
+    minimizer_args = config['minimizer_args']
+    minimizer_args = {**default_config['minimizer_args'], **minimizer_args}
+
     # add 'maxiter':epochs to minimizer_args, if not already present
-    if 'maxiter' not in config['minimizer_args']:
-        config['minimizer_args']['maxiter'] = config['epochs']
-        epochs = config['epochs']
-    else:
-        epochs = config['minimizer_args']['maxiter']
-    verbosity = config['verbosity']
+    if 'maxiter' not in minimizer_args:
+        minimizer_args['maxiter'] = config['epochs']
+    epochs = config['epochs']
+    verbosity = config['verbosity'] # my verbosity, not scipy's
     N_f = xt_f.shape[0]
     eps = config['eps']
 
@@ -173,7 +176,6 @@ def train_dhpm_constrained(model: dhpm.EqDiscoveryModel, xt_train: torch.Tensor,
     def obj_fn():
         return model.mse(xt_train, u_train)
 
-    minimizer_args: dict = {'maxiter': epochs}
     tracker = Training_Tracker(N_f, epochs, verbosity)
     def callback(intermediate_result: OptimizeResult):
         epoch = intermediate_result.nit
@@ -183,6 +185,7 @@ def train_dhpm_constrained(model: dhpm.EqDiscoveryModel, xt_train: torch.Tensor,
         tracker.track_epoch(epoch, residual, mse)
 
     print(f'Beginning constrained dhpm training with {epochs} epochs and eps = {eps}')
+    print(f'Using minimizer args: {minimizer_args}')
     optimizer = con_opt.TorchScipyOptimizer(model.parameters(), minimizer_args=minimizer_args, callback=callback)
     res = optimizer.step(obj_fn, con_fn, -eps, eps)
 
