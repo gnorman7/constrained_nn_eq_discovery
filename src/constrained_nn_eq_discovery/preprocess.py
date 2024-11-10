@@ -50,26 +50,27 @@ def get_noisy_U(sol: PDE_Soln_2D, noise_level: float) -> torch.Tensor:
 
 def get_training_data(sol: PDE_Soln_2D,
                       noise_level: float, N_ux: int, N_ut: int, N_f: int,
+                      positive_u_split_nf: Union[float, None] = None,
                       for_validation: bool = False) -> Union[
                           tuple[torch.Tensor, torch.Tensor, torch.Tensor],
                           tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]:
     """Given a PDE_Soln or PDE_Soln_2D object, returns training data for the DHPM.
     xt tensors are [N, 3]. The u tensor is [N, 1]. Collocation points are random, training data is equispaced.
+
+    Args:
+        positive_u_split_nf: The fraction of collocation points where U is positive (according to u_train),
+            if None, no information is used and the collocation points are random.
+
     """
     U_noisy = get_noisy_U(sol, noise_level)
 
+    # xt_train will be equispaced, with N_ux, N_ux, and N_ut points in x, y, and t respectively
+
+    # Replace with positive_u_split_nf sampling
+
     # sol.X and sol.T are 3D tensors
     # we want xt to be a 2D tensor with shape [len(t)*len(x)*len(y), 3]
-    xt = torch.stack((sol.X.flatten(), sol.Y.flatten(), sol.T.flatten()), dim=1)
 
-
-    # xt_train will be equispaced, with N_ux, N_ux, and N_ut points in x, y, and t respectively
-    # xt_f will be N_f randomly sampled points from xt
-
-    idx = torch.randperm(xt.shape[0])
-    xt = xt[idx]
-    xt_f = xt[:N_f]
-    xt_f.requires_grad = True
 
     # equispaced indices, these include the boundaries!
     t_inds = torch.linspace(0, sol.T.shape[0] - 1, N_ut, dtype=torch.int)
@@ -85,6 +86,31 @@ def get_training_data(sol: PDE_Soln_2D,
 
     if for_validation:
         return X_train, Y_train, T_train, U_train
+
+    # Take collocation points based on if U_train is positive, or randomly
+    if positive_u_split_nf is None:
+        xt = torch.stack((sol.X.flatten(), sol.Y.flatten(), sol.T.flatten()), dim=1)
+        idx = torch.randperm(xt.shape[0])
+        xt = xt[idx]
+        xt_f = xt[:N_f]
+    else:
+        pos_inds = U_train > 0
+        neg_inds = U_train <= 0
+        N_f_pos = int(N_f * positive_u_split_nf)
+        N_f_neg = N_f - N_f_pos
+        xt_f_pos = torch.stack((X_train[pos_inds].flatten(),
+                                Y_train[pos_inds].flatten(),
+                                T_train[pos_inds].flatten()), dim=1)
+        xt_f_neg = torch.stack((X_train[neg_inds].flatten(),
+                                Y_train[neg_inds].flatten(),
+                                T_train[neg_inds].flatten()), dim=1)
+        # shuffle the indices and sample
+        idx_pos = torch.randperm(xt_f_pos.shape[0])
+        idx_neg = torch.randperm(xt_f_neg.shape[0])
+        xt_f_pos = xt_f_pos[idx_pos[:N_f_pos]]
+        xt_f_neg = xt_f_neg[idx_neg[:N_f_neg]]
+        xt_f = torch.cat((xt_f_pos, xt_f_neg), dim=0)
+    xt_f.requires_grad = True
 
     # not randomized
     u_train = U_train.flatten().unsqueeze(1)
