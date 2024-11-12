@@ -44,7 +44,9 @@ def load_data_2D(datapath: str) -> PDE_Soln_2D:
 
 def get_noisy_U(sol: PDE_Soln_2D, noise_level: float) -> torch.Tensor:
     noise_std = noise_level * torch.std(sol.U)
-    U_noisy = sol.U + noise_std * torch.randn_like(sol.U)
+    # use numpy for the random, so it can be controlled with a separate seed
+    noise_instance = np.random.randn(*sol.U.shape)
+    U_noisy = sol.U + torch.tensor(noise_instance, dtype=sol.U.dtype, device=sol.U.device) * noise_std
     return U_noisy
 
 
