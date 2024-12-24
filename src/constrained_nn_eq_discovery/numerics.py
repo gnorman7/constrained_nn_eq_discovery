@@ -117,7 +117,7 @@ def fd_centered_5pt_2nd(u_tensor, x, dim=0):
 def ode_2nd_in_time(x_vec: torch.Tensor, u_and_v_int: torch.Tensor,
               N: Callable[[torch.Tensor], torch.Tensor]):
     """
-    u_int: (n_x, 2): [state, d/dt state]
+    u_and_v_int: (n_x - 2, 2): [state, d/dt state]
     """
     u_and_v_vec = torch.zeros(u_and_v_int.shape[0] + 2, u_and_v_int.shape[1],
                               device=u_and_v_int.device)
