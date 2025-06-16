@@ -3,6 +3,8 @@ import torch.nn as nn
 import numpy as np
 from typing import Callable
 from collections import OrderedDict
+from ast import Raise
+
 
 
 class DNN(nn.Module):
@@ -197,6 +199,7 @@ def get_big_u_and_ut_2d(model: Callable[[torch.Tensor], torch.Tensor],
 class EqDiscoveryModel(nn.Module):
     def __init__(self, u_dnn: nn.Module, N_dnn: nn.Module, is_2d: bool = False):
         super(EqDiscoveryModel, self).__init__()
+        """Careful, this assumes u_tt = N(...) if 1D! I.e. don't use it with Burgers or KdV"""
         self.u_dnn = u_dnn
         self.N_dnn = N_dnn
         if is_2d:
@@ -207,6 +210,84 @@ class EqDiscoveryModel(nn.Module):
     def get_residual(self, xt_f: torch.Tensor):
         """Returns [N_f, 1] tensor of residuals at collocation points"""
         big_u, u_t = self.big_u_and_ut_fun(self.u_dnn, xt_f)
+        N_eval = self.N_dnn(big_u)
+        assert N_eval.shape == u_t.shape
+        residual = u_t - N_eval
+        return residual
+
+    def mse(self, xt_train: torch.Tensor, u_train: torch.Tensor):
+        """u_train should be [N_u, 1]"""
+        u_pred = self.u_dnn(xt_train)
+        # make sure the shapes are correct
+        assert u_pred.shape == u_train.shape
+        return torch.mean((u_pred - u_train)**2)
+
+    def u_on_meshgrid(self, T: torch.Tensor, X: torch.Tensor, Y: torch.Tensor = None):
+        """Computes u on a meshgrid of T, X"""
+        if Y is not None:
+            xt = torch.stack((X.flatten(), Y.flatten(), T.flatten()), dim=1)
+        else:
+            xt = torch.stack((X.flatten(), T.flatten()), dim=1)
+        u = self.u_dnn(xt)
+        return u.reshape(T.shape)
+
+    def forward(self, big_u: torch.Tensor):
+        return self.N_dnn(big_u)
+
+
+def simple_get_big_u_and_ut(model: Callable[[torch.Tensor], torch.Tensor],
+                     xt_f: torch.Tensor,
+                     x_order: int = 2,
+                     ) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Args:
+        model: computes u at collocation points, using torch functions
+        xt_f: tensor of collocation points, (N_f, 2)
+        x_order: 1, 2, or 3, depending on how many x derivatives to take (default 2)
+
+    Returns:
+        A tuple with two tensors:
+            big_u: tensor of u, u_x, u_xx, etc at collocation points, (N_f, 1 + x_order)
+            u_t: tensor of u_t at collocation points, (N_f, 1), or u_tt if is_2nd_time
+
+    Note, this is not part of the EqDiscoveryModel class, as it can be equally
+    used by the true dynamics (PINN) by prescribing model as the true dynamics.
+    """
+
+    assert xt_f.requires_grad
+    assert x_order in [1, 2, 3]
+
+    u = model(xt_f)
+    u_xt = torch.autograd.grad(
+        u, xt_f, grad_outputs=torch.ones_like(u), create_graph=True)[0]
+    u_x = u_xt[:, 0:1]
+    u_t = u_xt[:, 1:2]
+    if x_order >= 2:
+        u_xx = torch.autograd.grad(u_x, xt_f,
+                                   grad_outputs=torch.ones_like(u_x),
+                                   create_graph=True)[0][:, 0:1]
+        if x_order == 3:
+            u_xxx = torch.autograd.grad(u_xx, xt_f,
+                                        grad_outputs=torch.ones_like(u_xx),
+                                        create_graph=True)[0][:, 0:1]
+            big_u = torch.cat([u, u_x, u_xx, u_xxx], dim=1)
+        else:
+            big_u = torch.cat([u, u_x, u_xx], dim=1)
+    else:
+        big_u = torch.cat([u, u_x], dim=1)
+
+    return big_u, u_t
+
+class SimpleEqDiscoveryModel(nn.Module):
+    def __init__(self, u_dnn: nn.Module, N_dnn: nn.Module, x_order: int = 2):
+        super(SimpleEqDiscoveryModel, self).__init__()
+        self.u_dnn = u_dnn
+        self.N_dnn = N_dnn
+        self.x_order = x_order
+
+    def get_residual(self, xt_f: torch.Tensor):
+        """Returns [N_f, 1] tensor of residuals at collocation points"""
+        big_u, u_t = simple_get_big_u_and_ut(self.u_dnn, xt_f, x_order=self.x_order)
         N_eval = self.N_dnn(big_u)
         assert N_eval.shape == u_t.shape
         residual = u_t - N_eval
