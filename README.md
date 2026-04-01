@@ -1,6 +1,6 @@
 # Constrained or Unconstrained? Neural-Network-Based Equation Discovery from Data
 
-Available on [CMA](https://doi.org/10.1016/j.cma.2024.117684), with previous versions on [arXiv](https://arxiv.org/abs/2406.02581).
+Available on [CMAME](https://doi.org/10.1016/j.cma.2024.117684), with previous versions on [arXiv](https://arxiv.org/abs/2406.02581).
 
 Grant Norman, Jacqueline Wentz, Hemanth Kolla, Kurt Maute, Alireza Doostan
 
